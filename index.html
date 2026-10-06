@@ -1,276 +1,504 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>P2P FastDoc Scanner & Desktop Sync (< 100 KB)</title>
-  <!-- PeerJS library for serverless browser-to-browser P2P connection -->
+  <title>FastDoc Instant Sync & Scanner</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <!-- QRCode generator for 1-second pairing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --primary: #2563eb;
-      --success: #16a34a;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
+      --bg: #0b0f19;
+      --card-bg: #151f32;
+      --accent: #2563eb;
+      --success: #22c55e;
+      --border: #22324d;
+      --text: #ffffff;
+      --text-dim: #94a3b8;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .status-badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; font-weight: 600; background: #475569; color: white; }
-    .status-badge.connected { background: var(--success); }
-    .container { max-width: 900px; margin: 0 auto; width: 100%; padding: 16px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-    .role-select { display: flex; gap: 10px; }
-    .btn { flex: 1; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; text-align: center; }
-    .btn:hover { opacity: 0.9; }
-    .btn-auto { background: #059669; }
-    .btn-auto.active { background: #dc2626; animation: pulse 1.2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
-    .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .preset-btn { background: #334155; color: #cbd5e1; border: 1px solid transparent; padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .preset-btn.active { background: var(--primary); color: white; border-color: #60a5fa; }
-    .camera-box { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    .scan-guide { position: absolute; border: 2px dashed rgba(255,255,255,0.8); box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); border-radius: 6px; pointer-events: none; }
-    .guide-photo { width: 45%; aspect-ratio: 3.5/4.5; }
-    .guide-card { width: 85%; aspect-ratio: 16/10; }
-    .guide-doc { width: 85%; aspect-ratio: 21/29.7; }
-    .hud { position: absolute; bottom: 10px; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 20px; font-size: 11px; color: #38bdf8; font-weight: 600; }
-    .qr-container { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; background: #fff; border-radius: 8px; width: fit-content; margin: 0 auto; }
-    .file-item { display: flex; align-items: center; gap: 12px; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
-    .file-thumb { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; background: #334155; }
-    .file-details { flex: 1; overflow: hidden; }
-    .file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .file-size { font-size: 11px; color: #10b981; margin-top: 2px; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #334155;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .badge.connected {
+      background: #14532d;
+      color: #4ade80;
+      border: 1px solid #22c55e;
+    }
+    .main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-green {
+      background: #16a34a;
+    }
+    .btn-auto-active {
+      background: #dc2626 !important;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    /* Pairing Box */
+    .pair-code-display {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: #38bdf8;
+      background: #0f172a;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px dashed #38bdf8;
+      display: inline-block;
+      margin: 10px 0;
+    }
+    .qr-holder {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 8px 0;
+    }
+    .input-code {
+      background: #0b0f19;
+      border: 2px solid var(--border);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-align: center;
+      text-transform: uppercase;
+      padding: 12px;
+      border-radius: 8px;
+      width: 100%;
+      outline: none;
+    }
+    .input-code:focus {
+      border-color: var(--accent);
+    }
+
+    /* Mobile Camera Viewport (Large Full Area) */
+    .mobile-camera-screen {
+      position: relative;
+      width: 100%;
+      height: 72vh;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* Fixed 4:3 Green Framing Overlay */
+    .green-frame-4-3 {
+      position: absolute;
+      width: 90%;
+      aspect-ratio: 4 / 3;
+      max-height: 85%;
+      border: 3px solid #22c55e;
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+    }
+    .corner-mark {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: #4ade80;
+    }
+    .tl { top: -2px; left: -2px; border-top: 4px solid #4ade80; border-left: 4px solid #4ade80; }
+    .tr { top: -2px; right: -2px; border-top: 4px solid #4ade80; border-right: 4px solid #4ade80; }
+    .bl { bottom: -2px; left: -2px; border-bottom: 4px solid #4ade80; border-left: 4px solid #4ade80; }
+    .br { bottom: -2px; right: -2px; border-bottom: 4px solid #4ade80; border-right: 4px solid #4ade80; }
+
+    .scanner-hud {
+      position: absolute;
+      bottom: 15px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    /* Desktop Inbox */
+    .doc-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #0b0f19;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .doc-thumb {
+      width: 55px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #1e293b;
+    }
+    .doc-info {
+      flex: 1;
+      overflow: hidden;
+    }
+    .doc-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-size {
+      font-size: 11px;
+      color: #4ade80;
+      font-weight: 600;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
 
   <header>
     <div>
-      <h2 style="font-size: 16px;">⚡ FastDoc P2P Sync</h2>
-      <p style="font-size: 11px; color: var(--text-muted);">Strictly &lt; 100 KB &bull; Zero Server &bull; Pure Browser</p>
+      <h2 style="font-size: 16px; font-weight: 700;">⚡ FastDoc Scanner</h2>
+      <p style="font-size: 11px; color: var(--text-dim);">Strictly &lt; 100 KB &bull; High Definition</p>
     </div>
-    <span id="connStatus" class="status-badge">Disconnected</span>
+    <span id="connStatus" class="badge">Offline</span>
   </header>
 
-  <div class="container">
-    <!-- Role Setup (Automatic based on URL or Click) -->
-    <div id="roleSection" class="card">
-      <p style="font-size: 13px; text-align: center;">Chuniye ye screen kya hai:</p>
-      <div class="role-select">
-        <button class="btn" onclick="startDesktopMode()">💻 Yeh Computer (Desktop) Hai</button>
-        <button class="btn" style="background: #0284c7;" onclick="startMobileMode()">📱 Yeh Mobile (Scanner) Hai</button>
+  <div class="main-wrapper">
+    <!-- Initial Mode Selection -->
+    <div id="selectionScreen" class="card">
+      <h3 style="text-align: center; font-size: 15px;">Select Device Role</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn" onclick="initializeDesktopRole()">💻 This is Desktop (Receiver)</button>
+        <button class="btn btn-green" onclick="initializeMobileRole()">📱 This is Mobile Phone (Camera)</button>
       </div>
     </div>
 
-    <!-- Desktop View: Pairing QR & Incoming Files -->
-    <div id="desktopView" class="card" style="display: none;">
-      <div id="qrArea" style="text-align: center;">
-        <p style="font-size: 13px; margin-bottom: 12px;">Apne Mobile Camera se ye QR code scan karein:</p>
-        <div class="qr-container"><div id="qrcode"></div></div>
-        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Scan karte hi direct secure connection ban jayega.</p>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-        <h3 style="font-size: 14px;">Desktop Inbox (&lt; 100 KB Auto-Downloaded)</h3>
-        <span id="fileCount" style="font-size: 12px; color: #38bdf8;">0 Files</span>
-      </div>
-      <div id="desktopFileList" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;">
-        <p id="emptyMsg" style="text-align:center; color:var(--text-muted); font-size:12px; padding:20px;">Phone se scan hote hi yaha 1 second me dikhega aur auto-download ho jayega.</p>
-      </div>
-    </div>
-
-    <!-- Mobile View: Camera, Presets & Auto-Snap -->
-    <div id="mobileView" class="card" style="display: none;">
-      <div>
-        <label style="font-size: 11px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">DOCUMENT PRESET</label>
-        <div class="preset-grid">
-          <button class="preset-btn active" data-type="photo" data-guide="guide-photo" data-name="Applicant_Photo">Photo</button>
-          <button class="preset-btn" data-type="card" data-guide="guide-card" data-name="Aadhaar_Card">Aadhaar</button>
-          <button class="preset-btn" data-type="card" data-guide="guide-card" data-name="Voter_Card">Voter Card</button>
-          <button class="preset-btn" data-type="doc" data-guide="guide-doc" data-name="Bank_Passbook">Bank A/C</button>
-          <button class="preset-btn" data-type="doc" data-guide="guide-doc" data-name="Aadhaar_Consent">Consent</button>
-          <button class="preset-btn" data-type="doc" data-guide="guide-doc" data-name="Other_Doc">Other</button>
+    <!-- Desktop Viewport -->
+    <div id="desktopScreen" class="card" style="display: none;">
+      <div id="pairingContainer" style="text-align: center;">
+        <p style="font-size: 13px; color: var(--text-dim);">Pair using QR Code or 4-Digit Code</p>
+        <div class="qr-holder"><div id="qrcode"></div></div>
+        <div>
+          <p style="font-size: 11px; color: var(--text-dim);">DESKTOP PAIR CODE</p>
+          <div id="codeDisplay" class="pair-code-display">----</div>
         </div>
       </div>
 
-      <div class="camera-box">
-        <video id="video" playsinline autoplay muted></video>
-        <div id="guide" class="scan-guide guide-photo"></div>
-        <div id="hud" class="hud">Ready</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+        <h3 style="font-size: 14px;">Desktop Inbox (<span id="fileCount">0</span> Files)</h3>
+        <span style="font-size: 11px; color: #4ade80;">Auto-Download: Active</span>
       </div>
 
-      <div style="display: flex; gap: 8px;">
-        <button id="autoBtn" class="btn btn-auto">⚡ Auto-Scan: OFF</button>
-        <button id="snapBtn" class="btn">📷 Snap Now</button>
+      <div id="fileList" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto;">
+        <p id="emptyPrompt" style="text-align: center; color: var(--text-dim); font-size: 12px; padding: 30px;">
+          Documents captured from phone will appear and auto-download here instantly.
+        </p>
       </div>
-      <p style="font-size: 11px; color: var(--text-muted); text-align: center;">Auto-Scan ON karke card frame me rakhein, 1.5s steady rehne par auto-send hoga.</p>
+    </div>
+
+    <!-- Mobile Connect Input (If not using QR) -->
+    <div id="mobileConnectScreen" class="card" style="display: none;">
+      <h3 style="font-size: 14px;">Enter Desktop Pair Code</h3>
+      <input type="text" id="manualCodeInput" class="input-code" maxlength="4" placeholder="CODE">
+      <button class="btn" onclick="connectViaCode()">Connect to Desktop</button>
+      <p style="font-size: 11px; color: var(--text-dim); text-align: center;">Look at the 4-digit code shown on your Desktop screen.</p>
+    </div>
+
+    <!-- Mobile Full Camera Screen -->
+    <div id="mobileCameraScreen" class="card" style="display: none; padding: 10px;">
+      <div class="mobile-camera-screen" id="viewport">
+        <video id="video" playsinline autoplay muted></video>
+        <!-- 4:3 Aspect Ratio Green Frame -->
+        <div id="guideFrame" class="green-frame-4-3">
+          <div class="corner-mark tl"></div>
+          <div class="corner-mark tr"></div>
+          <div class="corner-mark bl"></div>
+          <div class="corner-mark br"></div>
+        </div>
+        <div id="scanHud" class="scanner-hud">Align Document Inside 4:3 Box</div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 6px;">
+        <button id="toggleAutoBtn" class="btn btn-green" style="flex: 1;">⚡ Auto-Snap: OFF</button>
+        <button id="manualCaptureBtn" class="btn" style="flex: 1;">📷 Snap</button>
+      </div>
     </div>
   </div>
 
-  <canvas id="hiddenCanvas" style="display:none;"></canvas>
+  <canvas id="cropCanvas" style="display:none;"></canvas>
 
   <script>
     let peer = null;
     let conn = null;
-    let activePreset = "Applicant_Photo";
-    let isAuto = false;
+    let isAutoActive = false;
     let autoTimer = null;
-    const canvas = document.getElementById('hiddenCanvas');
-    const ctx = canvas.getContext('2d');
-    const hud = document.getElementById('hud');
+    let fileIndex = 1000;
+    const prefix = "FDOC"; // Peer prefix for short pairing codes
 
-    // 1. Desktop Mode Handler
-    function startDesktopMode() {
-      document.getElementById('roleSection').style.display = 'none';
-      document.getElementById('desktopView').style.display = 'flex';
+    const connStatus = document.getElementById('connStatus');
+    const scanHud = document.getElementById('scanHud');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('cropCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-      peer = new Peer();
+    // Generate random 4-letter alphanumeric string
+    function generateSimpleCode() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      return code;
+    }
+
+    // Initialize Desktop Screen
+    function initializeDesktopRole() {
+      document.getElementById('selectionScreen').style.display = 'none';
+      document.getElementById('desktopScreen').style.display = 'flex';
+
+      const shortCode = generateSimpleCode();
+      document.getElementById('codeDisplay').innerText = shortCode;
+
+      peer = new Peer(prefix + shortCode);
+
       peer.on('open', (id) => {
-        const joinUrl = window.location.href.split('?')[0] + '?pair=' + id;
-        new QRCode(document.getElementById("qrcode"), { text: joinUrl, width: 160, height: 160 });
+        const joinLink = window.location.href.split('?')[0] + '?code=' + shortCode;
+        new QRCode(document.getElementById("qrcode"), { text: joinLink, width: 140, height: 140 });
       });
 
       peer.on('connection', (connection) => {
         conn = connection;
-        setConnectedUI();
-        document.getElementById('qrArea').style.display = 'none';
+        setConnectedBadge();
+        document.getElementById('pairingContainer').style.display = 'none';
 
-        conn.on('data', (payload) => {
-          handleIncomingDoc(payload);
+        conn.on('data', (fileData) => {
+          receiveDocumentOnDesktop(fileData);
         });
       });
     }
 
-    // 2. Mobile Mode Handler
-    function startMobileMode(pairId) {
-      document.getElementById('roleSection').style.display = 'none';
-      document.getElementById('mobileView').style.display = 'flex';
-      initCamera();
+    // Initialize Mobile Screen
+    function initializeMobileRole() {
+      document.getElementById('selectionScreen').style.display = 'none';
+      const urlCode = new URLSearchParams(window.location.search).get('code');
+      if (urlCode) {
+        connectToDesktopWithCode(urlCode.toUpperCase());
+      } else {
+        document.getElementById('mobileConnectScreen').style.display = 'flex';
+      }
+    }
+
+    function connectViaCode() {
+      const entered = document.getElementById('manualCodeInput').value.trim().toUpperCase();
+      if (entered.length >= 4) {
+        connectToDesktopWithCode(entered);
+      }
+    }
+
+    function connectToDesktopWithCode(code) {
+      document.getElementById('mobileConnectScreen').style.display = 'none';
+      document.getElementById('mobileCameraScreen').style.display = 'flex';
+      startCamera();
 
       peer = new Peer();
       peer.on('open', () => {
-        const targetId = pairId || new URLSearchParams(window.location.search).get('pair');
-        if (targetId) {
-          conn = peer.connect(targetId);
-          conn.on('open', () => setConnectedUI());
-        }
+        conn = peer.connect(prefix + code);
+        conn.on('open', () => {
+          setConnectedBadge();
+          scanHud.innerText = "Connected to Desktop ⚡";
+        });
       });
     }
 
-    function setConnectedUI() {
-      const b = document.getElementById('connStatus');
-      b.className = 'status-badge connected';
-      b.innerText = 'Connected ⚡';
+    function setConnectedBadge() {
+      connStatus.className = 'badge connected';
+      connStatus.innerText = 'Connected';
     }
 
-    // Auto-detect mobile role if URL has ?pair=...
-    if (new URLSearchParams(window.location.search).has('pair')) {
-      startMobileMode();
+    // Direct URL check
+    if (new URLSearchParams(window.location.search).has('code')) {
+      initializeMobileRole();
     }
 
-    // Camera Init
-    async function initCamera() {
+    // High Resolution Camera Feed
+    async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: false
         });
-        document.getElementById('video').srcObject = stream;
-      } catch (e) {
-        hud.innerText = "Camera error: " + e.message;
+        video.srcObject = stream;
+      } catch (err) {
+        scanHud.innerText = "Camera access denied";
       }
     }
 
-    // Preset Selection
-    document.querySelectorAll('.preset-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activePreset = btn.dataset.name;
-        document.getElementById('guide').className = 'scan-guide ' + btn.dataset.guide;
-      });
-    });
+    // High Definition Compression Engine (< 100 KB)
+    async function compressHighDefinition(sourceCanvas) {
+      let width = sourceCanvas.width;
+      let height = sourceCanvas.height;
 
-    // Compression strictly < 100 KB
-    async function compressBelow100KB(srcCanvas) {
-      let quality = 0.85;
-      let dataUrl = "";
+      // Maintain sharp aspect ratio with bicubic canvas downsampling
+      const maxAllowedWidth = 1400;
+      let targetCanvas = sourceCanvas;
+
+      if (width > maxAllowedWidth) {
+        const scale = maxAllowedWidth / width;
+        targetCanvas = document.createElement('canvas');
+        targetCanvas.width = maxAllowedWidth;
+        targetCanvas.height = Math.round(height * scale);
+        const tCtx = targetCanvas.getContext('2d');
+        tCtx.imageSmoothingEnabled = true;
+        tCtx.imageSmoothingQuality = 'high';
+        tCtx.drawImage(sourceCanvas, 0, 0, targetCanvas.width, targetCanvas.height);
+      }
+
+      // Quality iteration strictly tuned under 98 KB
+      let quality = 0.88;
+      let base64Result = "";
+
       while (quality >= 0.15) {
-        dataUrl = srcCanvas.toDataURL('image/jpeg', quality);
-        const approxKB = (dataUrl.length * (3/4)) / 1024;
-        if (approxKB <= 95) break;
-        quality -= 0.08;
+        base64Result = targetCanvas.toDataURL('image/jpeg', quality);
+        const sizeInKB = (base64Result.length * (3/4)) / 1024;
+        if (sizeInKB <= 96) break;
+        quality -= 0.06;
       }
-      return dataUrl;
+      return base64Result;
     }
 
-    // Capture & Send direct to Desktop
-    async function processAndSend() {
-      const vid = document.getElementById('video');
-      if (!vid.videoWidth) return;
+    // Crop Strictly to 4:3 Green Overlay Box
+    async function processAndSendDocument() {
+      if (!video.videoWidth) return;
 
-      canvas.width = vid.videoWidth;
-      canvas.height = vid.videoHeight;
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Crop to guide
-      const vp = vid.getBoundingClientRect();
-      const gd = document.getElementById('guide').getBoundingClientRect();
-      const sx = vid.videoWidth / vp.width;
-      const sy = vid.videoHeight / vp.height;
-      const cx = (gd.left - vp.left) * sx;
-      const cy = (gd.top - vp.top) * sy;
-      const cw = gd.width * sx;
-      const ch = gd.height * sy;
+      const vRect = video.getBoundingClientRect();
+      const gRect = document.getElementById('guideFrame').getBoundingClientRect();
 
-      const cropCanvas = document.createElement('canvas');
-      cropCanvas.width = cw;
-      cropCanvas.height = ch;
-      cropCanvas.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+      const scaleX = video.videoWidth / vRect.width;
+      const scaleY = video.videoHeight / vRect.height;
 
-      hud.innerText = "Optimizing < 100 KB...";
-      const base64Image = await compressBelow100KB(cropCanvas);
-      const sizeKB = ((base64Image.length * (3/4)) / 1024).toFixed(1);
-      const timestamp = new Date().toISOString().replace(/[-:T.]/g, "").slice(8, 14);
-      const filename = `${activePreset}_${timestamp}.jpg`;
+      const cropX = Math.max(0, (gRect.left - vRect.left) * scaleX);
+      const cropY = Math.max(0, (gRect.top - vRect.top) * scaleY);
+      const cropW = Math.min(video.videoWidth - cropX, gRect.width * scaleX);
+      const cropH = Math.min(video.videoHeight - cropY, gRect.height * scaleY);
+
+      const croppedCanvas = document.createElement('canvas');
+      croppedCanvas.width = cropW;
+      croppedCanvas.height = cropH;
+      const cCtx = croppedCanvas.getContext('2d');
+      cCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+      scanHud.innerText = "Processing HD Image...";
+      const compressedImage = await compressHighDefinition(croppedCanvas);
+      const finalSizeKB = ((compressedImage.length * (3/4)) / 1024).toFixed(1);
+
+      fileIndex++;
+      const safeFileName = `scanimage_${fileIndex}.jpg`;
 
       if (conn && conn.open) {
-        conn.send({ name: filename, size: sizeKB, image: base64Image });
-        hud.innerText = `Sent to Desktop: ${sizeKB} KB!`;
+        conn.send({ name: safeFileName, size: finalSizeKB, image: compressedImage });
+        scanHud.innerText = `Sent: ${finalSizeKB} KB (${safeFileName})`;
       } else {
-        hud.innerText = `Saved locally: ${sizeKB} KB (Desktop not connected)`;
-        triggerDownload(base64Image, filename);
+        scanHud.innerText = `Downloaded Locally: ${finalSizeKB} KB`;
+        triggerDownload(compressedImage, safeFileName);
       }
     }
 
-    // Receive at Desktop & Auto-Download
-    let totalReceived = 0;
-    function handleIncomingDoc(doc) {
-      document.getElementById('emptyMsg')?.remove();
-      totalReceived++;
-      document.getElementById('fileCount').innerText = `${totalReceived} Files`;
+    // Desktop Receiver & Auto-Download Execution
+    let totalReceivedDocs = 0;
+    function receiveDocumentOnDesktop(doc) {
+      document.getElementById('emptyPrompt')?.remove();
+      totalReceivedDocs++;
+      document.getElementById('fileCount').innerText = totalReceivedDocs;
 
-      const list = document.getElementById('desktopFileList');
+      const list = document.getElementById('fileList');
       const item = document.createElement('div');
-      item.className = 'file-item';
+      item.className = 'doc-item';
       item.innerHTML = `
-        <img class="file-thumb" src="${doc.image}">
-        <div class="file-details">
-          <div class="file-name">${doc.name}</div>
-          <div class="file-size">${doc.size} KB (Portal Ready)</div>
+        <img class="doc-thumb" src="${doc.image}">
+        <div class="doc-info">
+          <div class="doc-name">${doc.name}</div>
+          <div class="doc-size">${doc.size} KB &bull; Saved to Downloads</div>
         </div>
-        <a class="btn" style="padding: 6px 12px; font-size:12px; text-decoration:none;" href="${doc.image}" download="${doc.name}">Download</a>
+        <a class="btn" style="padding: 6px 12px; font-size:12px; text-decoration:none;" href="${doc.image}" download="${doc.name}">Re-Save</a>
       `;
       list.prepend(item);
 
-      // Automatic 1-second auto download on Desktop
+      // Instant Auto Download on Desktop
       triggerDownload(doc.image, doc.name);
     }
 
@@ -283,56 +511,67 @@
       document.body.removeChild(a);
     }
 
-    // Buttons
-    document.getElementById('snapBtn').addEventListener('click', processAndSend);
+    // Button Events
+    document.getElementById('manualCaptureBtn').addEventListener('click', processAndSendDocument);
 
-    const autoBtn = document.getElementById('autoBtn');
+    const autoBtn = document.getElementById('toggleAutoBtn');
     autoBtn.addEventListener('click', () => {
-      isAuto = !isAuto;
-      if (isAuto) {
-        autoBtn.classList.add('active');
-        autoBtn.innerText = "⚡ Auto-Scan: ON";
-        startAutoScanLoop();
+      isAutoActive = !isAutoActive;
+      if (isAutoActive) {
+        autoBtn.classList.add('btn-auto-active');
+        autoBtn.innerText = "⚡ Auto-Snap: ON";
+        scanHud.innerText = "Hold steady over document...";
+        startAutoCaptureWatch();
       } else {
-        autoBtn.classList.remove('active');
-        autoBtn.innerText = "⚡ Auto-Scan: OFF";
+        autoBtn.classList.remove('btn-auto-active');
+        autoBtn.innerText = "⚡ Auto-Snap: OFF";
+        scanHud.innerText = "Align Document Inside 4:3 Box";
         clearTimeout(autoTimer);
       }
     });
 
-    // Auto-detection loop
-    let lastData = null;
-    let hold = 0;
-    function startAutoScanLoop() {
-      if (!isAuto) return;
-      const testC = document.createElement('canvas');
-      testC.width = 120; testC.height = 90;
-      const tCtx = testC.getContext('2d');
-      const vid = document.getElementById('video');
+    // Auto-Snap Stability Logic
+    let prevFrame = null;
+    let holdCount = 0;
 
-      const check = () => {
-        if (!isAuto) return;
-        if (vid.videoWidth > 0) {
-          tCtx.drawImage(vid, 0, 0, 120, 90);
-          const cur = tCtx.getImageData(0, 0, 120, 90).data;
-          if (lastData) {
+    function startAutoCaptureWatch() {
+      if (!isAutoActive) return;
+
+      const small = document.createElement('canvas');
+      small.width = 120;
+      small.height = 90;
+      const sCtx = small.getContext('2d');
+
+      const loop = () => {
+        if (!isAutoActive) return;
+        if (video.videoWidth > 0) {
+          sCtx.drawImage(video, 0, 0, 120, 90);
+          const current = sCtx.getImageData(0, 0, 120, 90).data;
+
+          if (prevFrame) {
             let diff = 0;
-            for (let i = 0; i < cur.length; i += 16) diff += Math.abs(cur[i] - lastData[i]);
-            let avg = diff / (cur.length / 16);
-            if (avg < 6 && avg > 0.6) {
-              hold++;
-              if (hold === 3) {
-                hud.innerText = "Captured!";
-                processAndSend();
-                hold = -4;
+            for (let i = 0; i < current.length; i += 16) {
+              diff += Math.abs(current[i] - prevFrame[i]);
+            }
+            const avgDiff = diff / (current.length / 16);
+
+            // Document held steady inside the green frame
+            if (avgDiff < 5.5 && avgDiff > 0.4) {
+              holdCount++;
+              if (holdCount === 3) {
+                scanHud.innerText = "Capturing HD...";
+                processAndSendDocument();
+                holdCount = -4; // cooldown
               }
-            } else { hold = 0; }
+            } else {
+              holdCount = 0;
+            }
           }
-          lastData = cur;
+          prevFrame = current;
         }
-        autoTimer = setTimeout(check, 450);
+        autoTimer = setTimeout(loop, 400);
       };
-      check();
+      loop();
     }
   </script>
 </body>
