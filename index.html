@@ -136,7 +136,7 @@
       border-color: var(--accent);
     }
 
-    /* Mobile Camera Viewport (Large Full Area) */
+    /* Mobile Camera Viewport */
     .mobile-camera-screen {
       position: relative;
       width: 100%;
@@ -153,9 +153,8 @@
       height: 100%;
       object-fit: cover;
     }
-    /* Fixed 4:3 Green Framing Overlay */
-    .green-frame-4-3 {
-        .green-frame-4-3 {
+    /* Vertical 3:4 Green Overlay Box */
+    .green-frame-3-4 {
       position: absolute;
       width: 75%;
       aspect-ratio: 3 / 4;
@@ -165,7 +164,6 @@
       box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
       pointer-events: none;
     }
-
     .corner-mark {
       position: absolute;
       width: 16px;
@@ -199,8 +197,8 @@
       border: 1px solid var(--border);
     }
     .doc-thumb {
-      width: 55px;
-      height: 42px;
+      width: 42px;
+      height: 55px;
       object-fit: cover;
       border-radius: 4px;
       background: #1e293b;
@@ -244,7 +242,7 @@
       </div>
     </div>
 
-    <!-- Desktop Viewport -->
+    <!-- Desktop Screen -->
     <div id="desktopScreen" class="card" style="display: none;">
       <div id="pairingContainer" style="text-align: center;">
         <p style="font-size: 13px; color: var(--text-dim);">Pair using QR Code or 4-Digit Code</p>
@@ -267,7 +265,7 @@
       </div>
     </div>
 
-    <!-- Mobile Connect Input (If not using QR) -->
+    <!-- Mobile Connect Input -->
     <div id="mobileConnectScreen" class="card" style="display: none;">
       <h3 style="font-size: 14px;">Enter Desktop Pair Code</h3>
       <input type="text" id="manualCodeInput" class="input-code" maxlength="4" placeholder="CODE">
@@ -275,18 +273,18 @@
       <p style="font-size: 11px; color: var(--text-dim); text-align: center;">Look at the 4-digit code shown on your Desktop screen.</p>
     </div>
 
-    <!-- Mobile Full Camera Screen -->
+    <!-- Mobile Camera Screen -->
     <div id="mobileCameraScreen" class="card" style="display: none; padding: 10px;">
       <div class="mobile-camera-screen" id="viewport">
         <video id="video" playsinline autoplay muted></video>
-        <!-- 4:3 Aspect Ratio Green Frame -->
-        <div id="guideFrame" class="green-frame-4-3">
+        <!-- Vertical 3:4 Frame -->
+        <div id="guideFrame" class="green-frame-3-4">
           <div class="corner-mark tl"></div>
           <div class="corner-mark tr"></div>
           <div class="corner-mark bl"></div>
           <div class="corner-mark br"></div>
         </div>
-        <div id="scanHud" class="scanner-hud">Align Document Inside 4:3 Box</div>
+        <div id="scanHud" class="scanner-hud">Align Document Inside Vertical Box</div>
       </div>
 
       <div style="display: flex; gap: 10px; margin-top: 6px;">
@@ -304,7 +302,7 @@
     let isAutoActive = false;
     let autoTimer = null;
     let fileIndex = 1000;
-    const prefix = "FDOC"; // Peer prefix for short pairing codes
+    const prefix = "FDOC";
 
     const connStatus = document.getElementById('connStatus');
     const scanHud = document.getElementById('scanHud');
@@ -312,7 +310,6 @@
     const canvas = document.getElementById('cropCanvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-    // Generate random 4-letter alphanumeric string
     function generateSimpleCode() {
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
       let code = "";
@@ -320,7 +317,6 @@
       return code;
     }
 
-    // Initialize Desktop Screen
     function initializeDesktopRole() {
       document.getElementById('selectionScreen').style.display = 'none';
       document.getElementById('desktopScreen').style.display = 'flex';
@@ -346,7 +342,6 @@
       });
     }
 
-    // Initialize Mobile Screen
     function initializeMobileRole() {
       document.getElementById('selectionScreen').style.display = 'none';
       const urlCode = new URLSearchParams(window.location.search).get('code');
@@ -384,12 +379,10 @@
       connStatus.innerText = 'Connected';
     }
 
-    // Direct URL check
     if (new URLSearchParams(window.location.search).has('code')) {
       initializeMobileRole();
     }
 
-    // High Resolution Camera Feed
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -406,13 +399,11 @@
       }
     }
 
-    // High Definition Compression Engine (< 100 KB)
     async function compressHighDefinition(sourceCanvas) {
       let width = sourceCanvas.width;
       let height = sourceCanvas.height;
 
-      // Maintain sharp aspect ratio with bicubic canvas downsampling
-      const maxAllowedWidth = 1400;
+      const maxAllowedWidth = 1200;
       let targetCanvas = sourceCanvas;
 
       if (width > maxAllowedWidth) {
@@ -426,7 +417,6 @@
         tCtx.drawImage(sourceCanvas, 0, 0, targetCanvas.width, targetCanvas.height);
       }
 
-      // Quality iteration strictly tuned under 98 KB
       let quality = 0.88;
       let base64Result = "";
 
@@ -439,7 +429,6 @@
       return base64Result;
     }
 
-    // Crop Strictly to 4:3 Green Overlay Box
     async function processAndSendDocument() {
       if (!video.videoWidth) return;
 
@@ -480,7 +469,6 @@
       }
     }
 
-    // Desktop Receiver & Auto-Download Execution
     let totalReceivedDocs = 0;
     function receiveDocumentOnDesktop(doc) {
       document.getElementById('emptyPrompt')?.remove();
@@ -500,7 +488,6 @@
       `;
       list.prepend(item);
 
-      // Instant Auto Download on Desktop
       triggerDownload(doc.image, doc.name);
     }
 
@@ -513,7 +500,6 @@
       document.body.removeChild(a);
     }
 
-    // Button Events
     document.getElementById('manualCaptureBtn').addEventListener('click', processAndSendDocument);
 
     const autoBtn = document.getElementById('toggleAutoBtn');
@@ -527,12 +513,11 @@
       } else {
         autoBtn.classList.remove('btn-auto-active');
         autoBtn.innerText = "⚡ Auto-Snap: OFF";
-        scanHud.innerText = "Align Document Inside 4:3 Box";
+        scanHud.innerText = "Align Document Inside Vertical Box";
         clearTimeout(autoTimer);
       }
     });
 
-    // Auto-Snap Stability Logic
     let prevFrame = null;
     let holdCount = 0;
 
@@ -557,13 +542,12 @@
             }
             const avgDiff = diff / (current.length / 16);
 
-            // Document held steady inside the green frame
             if (avgDiff < 5.5 && avgDiff > 0.4) {
               holdCount++;
               if (holdCount === 3) {
                 scanHud.innerText = "Capturing HD...";
                 processAndSendDocument();
-                holdCount = -4; // cooldown
+                holdCount = -4;
               }
             } else {
               holdCount = 0;
